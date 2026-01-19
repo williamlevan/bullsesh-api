@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { PrismaClient, MemberRole } from '@prisma/client';
-import { NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
+import type { PrismaClient } from '@prisma/client';
+import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 
 // Validation schemas
 export const createCommunitySchema = z.object({
@@ -37,24 +37,14 @@ export class CommunityService {
     });
   }
 
-  async getMemberRole(communityId: string, userId: string): Promise<MemberRole | null> {
+  async isMember(communityId: string, userId: string): Promise<boolean> {
     const member = await this.prisma.communityMember.findUnique({
       where: { userId_communityId: { userId, communityId } },
     });
-    return member?.role ?? null;
+    return !!member;
   }
 
-  async isAdmin(communityId: string, userId: string): Promise<boolean> {
-    const role = await this.getMemberRole(communityId, userId);
-    return role === 'ADMIN';
-  }
-
-  async isModerator(communityId: string, userId: string): Promise<boolean> {
-    const role = await this.getMemberRole(communityId, userId);
-    return role === 'ADMIN' || role === 'MODERATOR';
-  }
-
-  async create(userId: string, input: CreateCommunityInput) {
+  async create(input: CreateCommunityInput) {
     const validatedInput = createCommunitySchema.parse(input);
 
     // Verify city exists
@@ -65,35 +55,22 @@ export class CommunityService {
       throw new NotFoundError('City', validatedInput.cityId);
     }
 
-    // Create community and make creator the admin
     return this.prisma.community.create({
       data: {
         name: validatedInput.name,
         description: validatedInput.description,
         imageUrl: validatedInput.imageUrl,
         cityId: validatedInput.cityId,
-        members: {
-          create: {
-            userId,
-            role: 'ADMIN',
-          },
-        },
       },
     });
   }
 
-  async update(communityId: string, userId: string, input: UpdateCommunityInput) {
+  async update(communityId: string, input: UpdateCommunityInput) {
     const validatedInput = updateCommunitySchema.parse(input);
 
     const community = await this.findById(communityId);
     if (!community) {
       throw new NotFoundError('Community', communityId);
-    }
-
-    // Only admins can update community settings
-    const isAdmin = await this.isAdmin(communityId, userId);
-    if (!isAdmin) {
-      throw new ForbiddenError('Only community admins can update community settings');
     }
 
     return this.prisma.community.update({
@@ -106,16 +83,10 @@ export class CommunityService {
     });
   }
 
-  async delete(communityId: string, userId: string) {
+  async delete(communityId: string) {
     const community = await this.findById(communityId);
     if (!community) {
       throw new NotFoundError('Community', communityId);
-    }
-
-    // Only admins can delete
-    const isAdmin = await this.isAdmin(communityId, userId);
-    if (!isAdmin) {
-      throw new ForbiddenError('Only community admins can delete the community');
     }
 
     await this.prisma.community.delete({ where: { id: communityId } });
@@ -141,7 +112,6 @@ export class CommunityService {
       data: {
         userId,
         communityId,
-        role: 'MEMBER',
       },
     });
   }
@@ -155,19 +125,6 @@ export class CommunityService {
       throw new NotFoundError('Membership');
     }
 
-    // Check if user is the only admin
-    if (member.role === 'ADMIN') {
-      const adminCount = await this.prisma.communityMember.count({
-        where: { communityId, role: 'ADMIN' },
-      });
-
-      if (adminCount === 1) {
-        throw new ForbiddenError(
-          'Cannot leave community as the only admin. Transfer ownership first.'
-        );
-      }
-    }
-
     await this.prisma.communityMember.delete({
       where: { userId_communityId: { userId, communityId } },
     });
@@ -175,23 +132,7 @@ export class CommunityService {
     return true;
   }
 
-  async updateMemberRole(
-    communityId: string,
-    actorId: string,
-    targetUserId: string,
-    role: MemberRole
-  ) {
-    // Only admins can change roles
-    const isAdmin = await this.isAdmin(communityId, actorId);
-    if (!isAdmin) {
-      throw new ForbiddenError('Only community admins can change member roles');
-    }
-
-    // Cannot change own role
-    if (targetUserId === actorId) {
-      throw new ForbiddenError('Cannot change your own role');
-    }
-
+  async removeMember(communityId: string, targetUserId: string) {
     const member = await this.prisma.communityMember.findUnique({
       where: { userId_communityId: { userId: targetUserId, communityId } },
     });
@@ -200,10 +141,11 @@ export class CommunityService {
       throw new NotFoundError('Member');
     }
 
-    return this.prisma.communityMember.update({
+    await this.prisma.communityMember.delete({
       where: { userId_communityId: { userId: targetUserId, communityId } },
-      data: { role },
     });
+
+    return true;
   }
 
   async getMembers(communityId: string) {

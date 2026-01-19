@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  googleId  String?  @unique
-  appleId   String?  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  avatarUrl    String?
+  googleId     String?  @unique
+  appleId      String?  @unique
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
   communities     CommunityMember[]
@@ -97,8 +98,7 @@ model Community {
 model CommunityMember {
   userId      String
   communityId String
-  role        MemberRole @default(MEMBER)
-  joinedAt    DateTime   @default(now())
+  joinedAt    DateTime @default(now())
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
@@ -142,12 +142,6 @@ model EventAttendee {
 
   @@id([userId, eventId])
   @@index([eventId])
-}
-
-enum MemberRole {
-  MEMBER
-  MODERATOR
-  ADMIN
 }
 
 enum VenueRole {

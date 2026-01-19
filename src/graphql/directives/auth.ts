@@ -43,19 +43,16 @@ async function checkRole(context: Context, requiredRole: string): Promise<boolea
   if (!user) return false;
 
   switch (requiredRole) {
+    case 'SUPER':
+      // Check if user is a super admin
+      return user.isSuperAdmin;
+
     case 'VENUE_STAFF':
       // Check if user is staff at any venue
       const venueStaff = await prisma.venueStaff.findFirst({
         where: { userId: user.id },
       });
       return !!venueStaff;
-
-    case 'COMMUNITY_ADMIN':
-      // Check if user is admin of any community
-      const communityMember = await prisma.communityMember.findFirst({
-        where: { userId: user.id, role: 'ADMIN' },
-      });
-      return !!communityMember;
 
     case 'USER':
     default:

@@ -1,10 +1,10 @@
 Project Structure
 
-bullsesh-api/          
-  ├── src/       
+bullsesh-api/
+  ├── src/
   │   ├── index.ts                  # Entry point with graceful shutdown
   │   ├── server.ts                 # Apollo Server with Express & WebSockets
-  │   ├── context.ts                # GraphQL context with auth          
+  │   ├── context.ts                # GraphQL context with auth
   │   ├── auth/
   │   │   ├── jwt.ts                # JWT sign/verify utilities
   │   │   ├── google.ts             # Google OAuth token verification
@@ -21,7 +21,7 @@ bullsesh-api/
   │   │   ├── community.service.ts, event.service.ts
   │   └── utils/
   │       ├── prisma.ts             # Prisma client singleton (Prisma 7 adapter)
-  │       ├── redis.ts              # Redis client with cache helpers                         
+  │       ├── redis.ts              # Redis client with cache helpers
   │       └── errors.ts             # Custom GraphQL error types
   ├── prisma/
   │   ├── schema.prisma             # All data models (User, City, Venue, etc.)
@@ -29,8 +29,8 @@ bullsesh-api/
   ├── Dockerfile                    # Multi-stage production build
   ├── docker-compose.yml            # Full stack deployment
   └── docker-compose.dev.yml        # Development dependencies
-                                                                                                                                                
-Key Features Implemented              
+
+Key Features Implemented
 
 - GraphQL API with Apollo Server 4, Express, and WebSocket subscriptions
 - Database with Prisma ORM (PostgreSQL) - 8 models with relations
@@ -47,7 +47,7 @@ Getting Started
   docker-compose -f docker-compose.dev.yml up -d
 
 # Run migrations
-  npx prisma migrate dev 
+  npx prisma migrate dev
 
 # Start development server
   npm run dev

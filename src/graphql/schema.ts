@@ -1,12 +1,6 @@
 export const typeDefs = `#graphql
   scalar DateTime
 
-  enum MemberRole {
-    MEMBER
-    MODERATOR
-    ADMIN
-  }
-
   enum VenueRole {
     STAFF
     MANAGER
@@ -24,6 +18,7 @@ export const typeDefs = `#graphql
     email: String!
     name: String
     avatarUrl: String
+    isSuperAdmin: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime!
     communities: [CommunityMember!]!
@@ -84,7 +79,6 @@ export const typeDefs = `#graphql
   type CommunityMember {
     userId: String!
     communityId: String!
-    role: MemberRole!
     joinedAt: DateTime!
     user: User!
     community: Community!
@@ -250,13 +244,13 @@ export const typeDefs = `#graphql
     addVenueStaff(venueId: ID!, userId: ID!, role: VenueRole!): VenueStaff!
     removeVenueStaff(venueId: ID!, userId: ID!): Boolean!
 
-    # Community
+    # Community (create/update/delete require SUPER admin)
     createCommunity(input: CreateCommunityInput!): Community!
     updateCommunity(id: ID!, input: UpdateCommunityInput!): Community!
     deleteCommunity(id: ID!): Boolean!
     joinCommunity(communityId: ID!): CommunityMember!
     leaveCommunity(communityId: ID!): Boolean!
-    updateMemberRole(communityId: ID!, userId: ID!, role: MemberRole!): CommunityMember!
+    removeCommunityMember(communityId: ID!, userId: ID!): Boolean!
 
     # Event
     createEvent(input: CreateEventInput!): Event!
