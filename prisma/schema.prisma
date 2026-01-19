@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  googleId  String?  @unique
+  appleId   String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  communities     CommunityMember[]
+  venueRoles      VenueStaff[]        @relation("UserVenueStaff")
+  eventsCreated   Event[]             @relation("EventCreator")
+  eventsAttending EventAttendee[]
+
+  @@index([email])
+  @@index([googleId])
+  @@index([appleId])
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  state     String?
+  country   String
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+
+  // Relations
+  venues      Venue[]
+  communities Community[]
+
+  @@index([name, country])
+}
+
+model Venue {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  latitude  Float?
+  longitude Float?
+  cityId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  city   City         @relation(fields: [cityId], references: [id])
+  staff  VenueStaff[]
+  events Event[]
+
+  @@index([cityId])
+  @@index([name])
+}
+
+model VenueStaff {
+  userId    String
+  venueId   String
+  role      VenueRole @default(MANAGER)
+  createdAt DateTime  @default(now())
+
+  user  User  @relation("UserVenueStaff", fields: [userId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@id([userId, venueId])
+  @@index([venueId])
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  cityId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  city    City              @relation(fields: [cityId], references: [id])
+  members CommunityMember[]
+  events  Event[]
+
+  @@index([cityId])
+  @@index([name])
+}
+
+model CommunityMember {
+  userId      String
+  communityId String
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime   @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, communityId])
+  @@index([communityId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  venueId     String
+  communityId String
+  creatorId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  venue     Venue           @relation(fields: [venueId], references: [id])
+  community Community       @relation(fields: [communityId], references: [id])
+  creator   User            @relation("EventCreator", fields: [creatorId], references: [id])
+  attendees EventAttendee[]
+
+  @@index([venueId])
+  @@index([communityId])
+  @@index([creatorId])
+  @@index([startTime])
+}
+
+model EventAttendee {
+  userId   String
+  eventId  String
+  status   AttendeeStatus @default(GOING)
+  joinedAt DateTime       @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+enum MemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+enum VenueRole {
+  STAFF
+  MANAGER
+  OWNER
+}
+
+enum AttendeeStatus {
+  GOING
+  MAYBE
+  NOT_GOING
+}
