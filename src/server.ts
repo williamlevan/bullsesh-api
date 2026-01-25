@@ -1,11 +1,37 @@
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
-import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { useServer } from 'graphql-ws/use/ws';
 import cors from 'cors';
+
+// API Key validation middleware
+const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
+  // Debug logging
+  console.log('--- Incoming Request ---');
+  console.log('Method:', req.method);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body:', JSON.stringify(req.body));
+  console.log('------------------------');
+
+  const apiKey = req.headers['x-api-key'];
+  const validApiKey = process.env.API_KEY;
+
+  if (!validApiKey) {
+    console.error('API_KEY not configured in environment variables');
+    res.status(500).json({ error: 'Server configuration error' });
+    return;
+  }
+
+  if (!apiKey || apiKey !== validApiKey) {
+    res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' });
+    return;
+  }
+
+  next();
+};
 import { makeExecutableSchema } from '@graphql-tools/schema';
 
 import { typeDefs } from './graphql/schema.js';
@@ -44,9 +70,17 @@ export async function createApolloServer() {
   const serverCleanup = useServer(
     {
       schema,
+      onConnect: async (ctx) => {
+        // Validate API key for WebSocket connections
+        const apiKey = ctx.connectionParams?.apiKey;
+        const validApiKey = process.env.API_KEY;
+
+        if (!validApiKey || apiKey !== validApiKey) {
+          return false; // Reject connection
+        }
+        return true;
+      },
       context: async () => {
-        // For subscriptions, we provide a minimal context
-        // In production, you'd want to authenticate WebSocket connections
         return {
           prisma,
           user: null,
@@ -115,6 +149,7 @@ export async function createApolloServer() {
       credentials: true,
     }),
     express.json(),
+    validateApiKey,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expressMiddleware(server as any, {
       context: async ({ req, res }) =>

@@ -228,6 +228,9 @@ export const typeDefs = `#graphql
     signInWithGoogle(idToken: String!): AuthPayload!
     signInWithApple(idToken: String!): AuthPayload!
 
+    # Dev only - create test user (disabled in production)
+    devCreateUser(email: String!, name: String, isSuperAdmin: Boolean): AuthPayload!
+
     # User
     updateProfile(name: String, avatarUrl: String): User!
     deleteAccount: Boolean!

@@ -2,10 +2,57 @@ import type { Context } from '../../context.js';
 import { signToken } from '../../auth/jwt.js';
 import { verifyGoogleToken } from '../../auth/google.js';
 import { verifyAppleToken } from '../../auth/apple.js';
-import { ValidationError } from '../../utils/errors.js';
+import { ValidationError, ForbiddenError } from '../../utils/errors.js';
 
 export const authResolvers = {
   Mutation: {
+    devCreateUser: async (
+      _: unknown,
+      { email, name, isSuperAdmin }: { email: string; name?: string; isSuperAdmin?: boolean },
+      { prisma }: Context
+    ) => {
+      // Only allow in development
+      if (process.env.NODE_ENV === 'production') {
+        throw new ForbiddenError('This mutation is only available in development');
+      }
+
+      if (!email) {
+        throw new ValidationError('Email is required');
+      }
+
+      // Check if user already exists
+      let user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email,
+            name,
+            isSuperAdmin: isSuperAdmin ?? false,
+          },
+        });
+      } else if (isSuperAdmin !== undefined) {
+        // Update existing user's super admin status if specified
+        user = await prisma.user.update({
+          where: { email },
+          data: { isSuperAdmin },
+        });
+      }
+
+      // Generate JWT
+      const token = signToken({
+        userId: user.id,
+        email: user.email,
+      });
+
+      return {
+        token,
+        user,
+      };
+    },
+
     signInWithGoogle: async (
       _: unknown,
       { idToken }: { idToken: string },

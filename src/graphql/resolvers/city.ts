@@ -1,5 +1,14 @@
 import type { Context } from '../../context.js';
-import { AuthenticationError, NotFoundError } from '../../utils/errors.js';
+import { AuthenticationError, NotFoundError, ForbiddenError } from '../../utils/errors.js';
+
+function requireSuperAdmin(user: Context['user']): void {
+  if (!user) {
+    throw new AuthenticationError();
+  }
+  if (!user.isSuperAdmin) {
+    throw new ForbiddenError('Only super admins can perform this action');
+  }
+}
 
 interface CreateCityInput {
   name: string;
@@ -44,9 +53,7 @@ export const cityResolvers = {
       { input }: { input: CreateCityInput },
       { user, prisma }: Context
     ) => {
-      if (!user) {
-        throw new AuthenticationError();
-      }
+      requireSuperAdmin(user);
 
       return prisma.city.create({
         data: {
@@ -64,9 +71,7 @@ export const cityResolvers = {
       { id, input }: { id: string; input: UpdateCityInput },
       { user, prisma }: Context
     ) => {
-      if (!user) {
-        throw new AuthenticationError();
-      }
+      requireSuperAdmin(user);
 
       const city = await prisma.city.findUnique({ where: { id } });
       if (!city) {
@@ -90,9 +95,7 @@ export const cityResolvers = {
       { id }: { id: string },
       { user, prisma }: Context
     ) => {
-      if (!user) {
-        throw new AuthenticationError();
-      }
+      requireSuperAdmin(user);
 
       const city = await prisma.city.findUnique({ where: { id } });
       if (!city) {
