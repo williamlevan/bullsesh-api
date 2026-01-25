@@ -48,8 +48,13 @@ async function isVenueStaff(
 async function canManageEvent(
   prisma: Context['prisma'],
   eventId: string,
-  userId: string
+  user: Context['user']
 ): Promise<boolean> {
+  if (!user) return false;
+
+  // Super admins can manage any event
+  if (user.isSuperAdmin) return true;
+
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     include: {
@@ -64,11 +69,11 @@ async function canManageEvent(
   if (!event) return false;
 
   // Creator can manage
-  if (event.creatorId === userId) return true;
+  if (event.creatorId === user.id) return true;
 
   // Venue owner can manage
   const ownerStaff = event.venue.staff.find(
-    (s) => s.userId === userId && s.role === 'OWNER'
+    (s) => s.userId === user.id && s.role === 'OWNER'
   );
   return !!ownerStaff;
 }
@@ -145,10 +150,12 @@ export const eventResolvers = {
         throw new NotFoundError('Community', input.communityId);
       }
 
-      // User must be venue staff to create events at this venue
-      const isStaff = await isVenueStaff(prisma, input.venueId, user.id);
-      if (!isStaff) {
-        throw new ForbiddenError('Only venue staff can create events at this venue');
+      // Super admins can create events at any venue, otherwise must be venue staff
+      if (!user.isSuperAdmin) {
+        const isStaff = await isVenueStaff(prisma, input.venueId, user.id);
+        if (!isStaff) {
+          throw new ForbiddenError('Only venue staff or super admins can create events at this venue');
+        }
       }
 
       const event = await prisma.event.create({
@@ -186,9 +193,9 @@ export const eventResolvers = {
       }
 
       // Check if user can manage this event
-      const canManage = await canManageEvent(prisma, id, user.id);
+      const canManage = await canManageEvent(prisma, id, user);
       if (!canManage) {
-        throw new ForbiddenError('Only event creator or venue owner can update this event');
+        throw new ForbiddenError('Only event creator, venue owner, or super admin can update this event');
       }
 
       const updatedEvent = await prisma.event.update({
@@ -224,9 +231,9 @@ export const eventResolvers = {
       }
 
       // Check if user can manage this event
-      const canManage = await canManageEvent(prisma, id, user.id);
+      const canManage = await canManageEvent(prisma, id, user);
       if (!canManage) {
-        throw new ForbiddenError('Only event creator or venue owner can delete this event');
+        throw new ForbiddenError('Only event creator, venue owner, or super admin can delete this event');
       }
 
       await prisma.event.delete({ where: { id } });
