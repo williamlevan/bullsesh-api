@@ -44,35 +44,38 @@ export function rateLimitDirectiveTransformer(schema: GraphQLSchema): GraphQLSch
         const windowSeconds = parseWindow(window);
 
         fieldConfig.resolve = async function (source, args, context: Context, info) {
-          // Create a unique key based on user or IP
-          const identifier = context.user?.id || context.req.ip || 'anonymous';
-          const fieldName = info.fieldName;
-          const key = `ratelimit:${fieldName}:${identifier}`;
+          // Skip rate limiting if Redis is not configured
+          if (redis) {
+            // Create a unique key based on user or IP
+            const identifier = context.user?.id || context.req.ip || 'anonymous';
+            const fieldName = info.fieldName;
+            const key = `ratelimit:${fieldName}:${identifier}`;
 
-          try {
-            // Get current count
-            const current = await redis.get(key);
-            const count = current ? parseInt(current, 10) : 0;
+            try {
+              // Get current count
+              const current = await redis.get(key);
+              const count = current ? parseInt(current, 10) : 0;
 
-            if (count >= max) {
-              throw new RateLimitError(
-                `Rate limit exceeded. Maximum ${max} requests per ${window}`
-              );
-            }
+              if (count >= max) {
+                throw new RateLimitError(
+                  `Rate limit exceeded. Maximum ${max} requests per ${window}`
+                );
+              }
 
-            // Increment counter
-            const pipeline = redis.pipeline();
-            pipeline.incr(key);
-            if (!current) {
-              pipeline.expire(key, windowSeconds);
-            }
-            await pipeline.exec();
-          } catch (error) {
-            // If Redis is unavailable, allow the request but log the error
-            if (!(error instanceof RateLimitError)) {
-              console.warn('Rate limiting unavailable:', error);
-            } else {
-              throw error;
+              // Increment counter
+              const pipeline = redis.pipeline();
+              pipeline.incr(key);
+              if (!current) {
+                pipeline.expire(key, windowSeconds);
+              }
+              await pipeline.exec();
+            } catch (error) {
+              // If Redis is unavailable, allow the request but log the error
+              if (!(error instanceof RateLimitError)) {
+                console.warn('Rate limiting unavailable:', error);
+              } else {
+                throw error;
+              }
             }
           }
 

@@ -217,6 +217,7 @@ export const typeDefs = `#graphql
     events(
       venueId: ID
       communityId: ID
+      cityId: ID
       upcoming: Boolean
       pagination: PaginationInput
     ): [Event!]!

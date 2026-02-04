@@ -211,8 +211,8 @@ Description: Leave a community (for a user)
 #### Query: `event(id)`
 Description: Get event by ID
 
-#### Query: `events(venueId, communityId, upcoming, pagination)`
-Description: List events with filters
+#### Query: `events(venueId, communityId, cityId, upcoming, pagination)`
+Description: List events with filters (filter by venue, community, city, or upcoming)
 
 #### Query: `myEvents`
 Description: List events you're attending (`GOING` status)

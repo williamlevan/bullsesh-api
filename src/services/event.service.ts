@@ -43,16 +43,18 @@ export class EventService {
   async findAll(options: {
     venueId?: string;
     communityId?: string;
+    cityId?: string;
     upcoming?: boolean;
     skip?: number;
     take?: number;
   }) {
-    const { venueId, communityId, upcoming, skip = 0, take = 50 } = options;
+    const { venueId, communityId, cityId, upcoming, skip = 0, take = 50 } = options;
 
     return this.prisma.event.findMany({
       where: {
         ...(venueId && { venueId }),
         ...(communityId && { communityId }),
+        ...(cityId && { venue: { cityId } }),
         ...(upcoming && { startTime: { gte: new Date() } }),
       },
       skip,

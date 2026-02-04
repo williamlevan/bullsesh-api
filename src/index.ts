@@ -6,10 +6,12 @@ const PORT = process.env.PORT || 4000;
 
 async function main() {
   try {
-    // Connect to Redis (lazy connect)
-    await redis.connect().catch((err: Error) => {
-      console.warn('Redis connection failed, caching disabled:', err.message);
-    });
+    // Connect to Redis if configured (lazy connect)
+    if (redis) {
+      await redis.connect().catch((err: Error) => {
+        console.warn('Redis connection failed, caching disabled:', err.message);
+      });
+    }
 
     // Create and start server
     const { httpServer } = await createApolloServer();
@@ -28,8 +30,10 @@ async function main() {
         console.log('HTTP server closed');
       });
 
-      await redis.quit().catch(() => {});
-      console.log('Redis connection closed');
+      if (redis) {
+        await redis.quit().catch(() => {});
+        console.log('Redis connection closed');
+      }
 
       process.exit(0);
     };

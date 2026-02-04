@@ -91,11 +91,13 @@ export const eventResolvers = {
       {
         venueId,
         communityId,
+        cityId,
         upcoming,
         pagination,
       }: {
         venueId?: string;
         communityId?: string;
+        cityId?: string;
         upcoming?: boolean;
         pagination?: { skip?: number; take?: number };
       },
@@ -105,6 +107,7 @@ export const eventResolvers = {
         where: {
           ...(venueId && { venueId }),
           ...(communityId && { communityId }),
+          ...(cityId && { venue: { cityId } }),
           ...(upcoming && { startTime: { gte: new Date() } }),
         },
         skip: pagination?.skip ?? 0,
