@@ -141,14 +141,16 @@ export async function createApolloServer() {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
   });
 
-  // Apply middleware
+  // Apply global middleware
+  app.use(cors<cors.CorsRequest>({
+    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    credentials: true,
+  }));
+  app.use(express.json());
+
+  // Apply GraphQL middleware
   app.use(
     '/graphql',
-    cors<cors.CorsRequest>({
-      origin: process.env.CORS_ORIGIN?.split(',') || '*',
-      credentials: true,
-    }),
-    express.json(),
     validateApiKey,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expressMiddleware(server as any, {
