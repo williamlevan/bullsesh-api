@@ -102,9 +102,86 @@ The server will be available at:
 Description: Sign in/up with Google OAuth token
 Returns: `AuthPayload { token, user }`
 
+**iOS Integration:**
+1. User taps "Sign in with Google" in your iOS app
+2. iOS app uses Google Sign-In SDK to authenticate
+3. iOS app receives an ID token from Google
+4. iOS app sends the ID token to this endpoint
+5. Backend verifies token with Google, creates/finds user, returns JWT
+
+**Example Request:**
+```graphql
+mutation {
+  signInWithGoogle(idToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...") {
+    token
+    user {
+      id
+      email
+      name
+      avatarUrl
+    }
+  }
+}
+```
+
+**Example Response:**
+```json
+{
+  "data": {
+    "signInWithGoogle": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "clx1234567890",
+        "email": "user@gmail.com",
+        "name": "John Doe",
+        "avatarUrl": "https://lh3.googleusercontent.com/..."
+      }
+    }
+  }
+}
+```
+
+**Environment Variable Required:** `GOOGLE_CLIENT_ID` (iOS OAuth client ID from Google Cloud Console)
+
+---
+
 #### Mutation: `signInWithApple(idToken)`
 Description: Sign in/up with Apple ID token
 Returns: `AuthPayload { token, user }`
+
+**iOS Integration:**
+1. User taps "Sign in with Apple" in your iOS app
+2. iOS app uses AuthenticationServices framework
+3. iOS app receives an identity token from Apple
+4. iOS app sends the identity token to this endpoint
+5. Backend verifies token with Apple, creates/finds user, returns JWT
+
+**Example Request:**
+```graphql
+mutation {
+  signInWithApple(idToken: "eyJraWQiOiJXNldjT0tCIiwiYWxnIjoiUlMyNTYifQ...") {
+    token
+    user {
+      id
+      email
+      name
+    }
+  }
+}
+```
+
+---
+
+#### Using the JWT Token
+
+After signing in, include the returned `token` in subsequent requests:
+
+**Header:**
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+This is required for any endpoint marked with **Auth required**.
 
 ### User
 
@@ -405,10 +482,21 @@ Use case: Live attendee count
 
 2. **Configure environment variables**
 Copy .env.example to .env and set:
-DATABASE_URL="postgresql://USERNAME@localhost:5432/bullsesh?schema=public"                    
-REDIS_URL="redis://localhost:6379"             
-JWT_SECRET="your-secret-key"                   
+```
+DATABASE_URL="postgresql://USERNAME@localhost:5432/bullsesh?schema=public"
+REDIS_URL="redis://localhost:6379"
+JWT_SECRET="your-secret-key"
 API_KEY="your-api-key"
+GOOGLE_CLIENT_ID="your-ios-client-id.apps.googleusercontent.com"
+```
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string (optional - caching disabled if not set) |
+| `JWT_SECRET` | Secret key for signing JWT tokens |
+| `API_KEY` | API key required in `x-api-key` header for all requests |
+| `GOOGLE_CLIENT_ID` | iOS OAuth client ID from Google Cloud Console |
 
 #### macOS with Homebrew
 `brew services start postgresql@14`
@@ -430,6 +518,39 @@ API_KEY="your-api-key"
 `npm run dev`
 
 ### Endpoints
-- GraphQL: http://localhost:4000/graphql       
-- WebSocket: ws://localhost:4000/graphql       
+- GraphQL: http://localhost:4000/graphql
+- WebSocket: ws://localhost:4000/graphql
 - Health Check: http://localhost:4000/health
+
+---
+
+## Railway Database Access
+
+### View Database with Prisma Studio
+
+To browse and edit the Railway database tables locally using Prisma Studio:
+
+```bash
+railway run npx prisma studio
+```
+
+This opens a web UI at `http://localhost:5555` where you can view and modify all tables.
+
+### Run Migrations on Railway
+
+```bash
+railway run npm run prisma:deploy
+```
+
+### Other Database Commands
+
+```bash
+# Open a psql shell to the Railway database
+railway run npx prisma db execute --stdin < query.sql
+
+# Reset the database (caution: deletes all data)
+railway run npx prisma migrate reset
+
+# Seed the database
+railway run npx prisma db seed
+```
